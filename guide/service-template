@@ -1,6 +1,6 @@
 # 🧩 LLM Service Template Guide
 
-> This guide outlines how to create a new production-grade model inferencing service using our standardized template. It explains the structure, components, reusable utilities, and how to adapt the template for new models and modalities.
+> This guide outlines how to create a new  model inferencing service using a standardized template. It explains the structure, components, reusable utilities, and how to adapt the template for new models and modalities.
 > 
 
 ---

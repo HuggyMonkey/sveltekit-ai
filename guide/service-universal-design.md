@@ -1,6 +1,6 @@
 # 🧩 Universal LLM Service Template Guide
 
-This guide defines the structure and standards for building **modular, production-grade LLM services** that abstract a single input → inference → output task using any provider (OpenAI, Claude, Gemini, etc.).
+This guide defines the structure and standards for building **modular, LLM services** that abstract a single input → inference → output task using any provider (OpenAI, Claude, Gemini, etc.).
 
 These services are designed to be:
 
