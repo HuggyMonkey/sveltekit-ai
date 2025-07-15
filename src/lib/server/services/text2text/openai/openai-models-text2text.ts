@@ -11,9 +11,24 @@ export const schema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   top_p: z.number().min(0).max(1).optional(),
   max_output_tokens: z.number().optional(),
+
+  frequency_penalty: z.number().min(-2).max(2).optional(),
+  presence_penalty: z.number().min(-2).max(2).optional(),
+  logit_bias: z.record(z.number()).optional(),
+  stop: z.array(z.string()).optional(),
+  logprobs: z.number().optional(),
+  top_logprobs: z.number().optional(),
+  response_format: z.enum(['text', 'json_schema']).optional(),
+  structured_outputs: z.boolean().optional(),
+  tool_choice: z.union([z.literal('auto'), z.literal('none'), z.literal('required'), z.string()]).optional(),
+  previous_response_id: z.string().optional(),
+  truncation: z.enum(['auto', 'disabled']).optional(),
+  parallel_tool_calls: z.boolean().optional(),
+  include: z.array(z.string()).optional(),
+  metadata: z.record(z.string()).optional(),
+
   apiKey: z.string().optional(),
   debug: z.boolean().optional(),
-  // Add any other advanced OpenAI params as needed
 });
 
 export type Input = z.infer<typeof schema>;
@@ -63,7 +78,22 @@ export async function openai_models_text2text(input: Input): Promise<Output> {
     max_output_tokens,
     apiKey,
     debug,
-    // ...other advanced params
+
+    frequency_penalty,
+    presence_penalty,
+    logit_bias,
+    stop,
+    logprobs,
+    top_logprobs,
+    response_format,
+    structured_outputs,
+    tool_choice,
+    previous_response_id,
+    truncation,
+    parallel_tool_calls,
+    include,
+    metadata,
+
   } = parsed.data;
 
   const resolvedApiKey = apiKey ?? getEnv('OPENAI_API_KEY');
@@ -81,7 +111,20 @@ export async function openai_models_text2text(input: Input): Promise<Output> {
       temperature,
       top_p,
       max_output_tokens,
-      // ...other advanced params
+      frequency_penalty,
+      presence_penalty,
+      logit_bias,
+      stop,
+      logprobs,
+      top_logprobs,
+      response_format,
+      structured_outputs,
+      tool_choice,
+      previous_response_id,
+      truncation,
+      parallel_tool_calls,
+      include,
+      metadata,
     });
 
     const response = await client.responses.create(payload as any);

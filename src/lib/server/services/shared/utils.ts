@@ -11,3 +11,7 @@ export const missingApiKeyError = (provider: string) => ({
     code: 'MISSING_API_KEY'
   }
 });
+
+export function isAsyncIterable(obj: unknown): obj is AsyncIterable<unknown> {
+  return !!obj && typeof obj === 'object' && typeof (obj as any)[Symbol.asyncIterator] === 'function';
+}

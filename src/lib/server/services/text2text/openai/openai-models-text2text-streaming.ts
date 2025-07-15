@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { OpenAI } from 'openai';
-import { buildOpenAIPayload, parseOpenAIUsage } from '$lib/server/services/shared/openai-utils';
-import { getEnv, missingApiKeyError } from '$lib/server/services/shared/utils';
+import { getEnv, missingApiKeyError, isAsyncIterable } from '$lib/server/services/shared/utils';
+import { buildOpenAIPayload } from '$lib/server/services/shared/openai-utils';
 
+// Accepts any OpenAI model name for text2text streaming tasks
 export const schema = z.object({
   input: z.string().min(1),
+  model: z.string().min(1, 'Model name is required'),
   instructions: z.string().optional(),
-  model: z.literal('gpt-4o-mini').optional(),
   temperature: z.number().min(0).max(2).optional(),
   top_p: z.number().min(0).max(1).optional(),
   max_output_tokens: z.number().optional(),
@@ -25,25 +26,19 @@ export const schema = z.object({
   parallel_tool_calls: z.boolean().optional(),
   include: z.array(z.string()).optional(),
   metadata: z.record(z.string()).optional(),
-  
+
   apiKey: z.string().optional(),
   debug: z.boolean().optional(),
+  abortSignal: z.any().optional(),
 });
 
 export type Input = z.infer<typeof schema>;
 
+// Streaming returns an AsyncIterable of response events
 export type Output =
   | {
       success: true;
-      data: {
-        text: string;
-        usage?: ReturnType<typeof parseOpenAIUsage>;
-        meta?: {
-          model: string;
-          parameters: Record<string, unknown>;
-        };
-        raw?: unknown;
-      };
+      data: AsyncIterable<any>;
     }
   | {
       success: false;
@@ -55,7 +50,7 @@ export type Output =
       };
     };
 
-export async function openai_gpt4o_mini_text2text(input: Input): Promise<Output> {
+export async function openai_models_text2text_streaming(input: Input): Promise<Output> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -70,13 +65,14 @@ export async function openai_gpt4o_mini_text2text(input: Input): Promise<Output>
 
   const {
     input: userInput,
+    model,
     instructions,
-    model = 'gpt-4o-mini',
     temperature,
     top_p,
     max_output_tokens,
     apiKey,
     debug,
+    abortSignal,
 
     frequency_penalty,
     presence_penalty,
@@ -94,10 +90,7 @@ export async function openai_gpt4o_mini_text2text(input: Input): Promise<Output>
     metadata,
   } = parsed.data;
 
-
-
   const resolvedApiKey = apiKey ?? getEnv('OPENAI_API_KEY');
-
   if (!resolvedApiKey) {
     return missingApiKeyError('OpenAI') as Output;
   }
@@ -105,7 +98,6 @@ export async function openai_gpt4o_mini_text2text(input: Input): Promise<Output>
   const client = new OpenAI({ apiKey: resolvedApiKey });
 
   try {
-
     const payload = buildOpenAIPayload({
       model,
       input: userInput,
@@ -127,41 +119,35 @@ export async function openai_gpt4o_mini_text2text(input: Input): Promise<Output>
       parallel_tool_calls,
       include,
       metadata,
+      stream: true, // enable streaming
     });
 
-    const response = await client.responses.create(payload as any);
-
-    return {
-      success: true,
-      data: {
-        text: response.output_text ?? '',
-        usage: parseOpenAIUsage(response.usage),
-        meta: {
-          model: response.model,
-          parameters: {
-            model,
-            temperature,
-            top_p,
-            max_output_tokens,
-            frequency_penalty,
-            presence_penalty,
-            stop,
-          },
+    const resp = await client.responses.create(payload as any, { signal: abortSignal });
+    if (isAsyncIterable(resp)) {
+      // It's a stream
+      return {
+        success: true,
+        data: resp as AsyncIterable<any>,
+      };
+    } else {
+      // Not a stream, treat as error or handle as non-streaming
+      return {
+        success: false,
+        error: {
+          message: 'Expected a streaming response but got a non-streaming response.',
+          code: 'NOT_STREAMING',
+          details: resp,
         },
-        ...(debug && { raw: response }),
-      },
-    };
+      };
+    }
   } catch (err: any) {
     return {
       success: false,
       error: {
-        message: 'LLM request failed',
+        message: 'LLM streaming request failed',
         code: err.code,
         status: err.status,
-        details: {
-            message: err.message,
-            type: err.type,
-          }
+        details: err,
       },
     };
   }
