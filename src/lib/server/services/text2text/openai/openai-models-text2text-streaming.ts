@@ -71,7 +71,6 @@ export async function openai_models_text2text_streaming(input: Input): Promise<O
     top_p,
     max_output_tokens,
     apiKey,
-    debug,
     abortSignal,
 
     frequency_penalty,
