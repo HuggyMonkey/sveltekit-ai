@@ -121,12 +121,12 @@ export async function openai_models_text2text_streaming(input: Input): Promise<O
       stream: true, // enable streaming
     });
 
-    const resp = await client.responses.create(payload as any, { signal: abortSignal });
-    if (isAsyncIterable(resp)) {
+    const response = await client.responses.create(payload as any, { signal: abortSignal });
+    if (isAsyncIterable(response)) {
       // It's a stream
       return {
         success: true,
-        data: resp as AsyncIterable<any>,
+        data: response as AsyncIterable<any>,
       };
     } else {
       // Not a stream, treat as error or handle as non-streaming
@@ -135,7 +135,7 @@ export async function openai_models_text2text_streaming(input: Input): Promise<O
         error: {
           message: 'Expected a streaming response but got a non-streaming response.',
           code: 'NOT_STREAMING',
-          details: resp,
+          details: response,
         },
       };
     }
