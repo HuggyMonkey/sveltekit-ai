@@ -11,28 +11,13 @@ const apiInputSchema = z.object({
 });
 
 
-// JSON Schema for the structured output response
-const relatedItemsSchema = {
-    type: "object",
-    properties: {
-        relatedItems: {
-            type: "array",
-            minItems: 10,
-            maxItems: 20,
-            items: {
-                type: "object",
-                properties: {
-                    name: { type: "string", description: "The name or title of the related item." },
-                },
-                required: ["name"],
-                additionalProperties: false
-            },
-            description: "An array of 10 to 20 items related to the user topic word."
-        }
-    },
-    required: ["relatedItems"],
-    additionalProperties: false
-};
+
+// This schema represents an array of strings (words) containing between 10 and 20 items
+const relatedItemsSchemaZod = z.object({
+  relatedItems: z.array(
+    z.string().min(1, "Each item must be a non-empty word")
+  ).min(10, "At least 10 words required").max(20, "No more than 20 words allowed")
+});
 
 // Define server-side constants
 const SYSTEM_PROMPT = 'You are a helpful AI that returns responses in structured JSON.';
@@ -70,8 +55,8 @@ export const POST: RequestHandler = async ({ request }) => {
       instructions: SYSTEM_PROMPT,
       response_format: {
         type: 'json_schema',
-        name: 'related_items',
-        schema: relatedItemsSchema,
+        name: 'relatedItems',
+        schema: relatedItemsSchemaZod,
         strict: true
       },
       temperature: DEFAULT_TEMPERATURE,

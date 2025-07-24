@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodTextFormat } from "openai/helpers/zod"
 import { OpenAI } from 'openai';
 import { getEnv, missingApiKeyError } from '$lib/server/services/shared/utils';
 import { buildOpenAIPayload, parseOpenAIUsage } from '$lib/server/services/shared/openai-utils';
@@ -66,19 +67,21 @@ export async function openai_models_text2text_structuredOutputs(input: Input): P
       top_p,
       max_output_tokens,
       text: {
-        format: {
-            type: "json_schema",
-            name: response_format.name,
-            schema: response_format.schema,
-            strict: response_format.strict ?? true
-        }
-    }
+        format: zodTextFormat(response_format.schema, response_format.name),
+      },
     });
 
-    const resp = await client.responses.create(payload as any);
+    const response = await client.responses.create(payload as any);
+
+    if (response.status === "incomplete" && response?.incomplete_details?.reason === "max_output_tokens") {
+        return {
+            success: false,
+            error: { message: "Incomplete response", code: "INCOMPLETE_RESPONSE", details: response.incomplete_details },
+        };
+    }
 
     let parsedJson: unknown;
-    const content = resp.output_text ?? "";
+    const content = response.output_text ?? "";
 
     try {
       parsedJson = JSON.parse(content ?? "");
@@ -92,12 +95,12 @@ export async function openai_models_text2text_structuredOutputs(input: Input): P
     return {
       success: true,
       data: parsedJson,
-      usage: parseOpenAIUsage(resp.usage),
+      usage: parseOpenAIUsage(response.usage),
       meta: {
-        model: resp.model,
+        model: response.model,
         parameters: { model, temperature, top_p, max_output_tokens },
       },
-      ...(debug ? { raw: resp } : {}),
+      ...(debug ? { raw: response } : {}),
     };
   } catch (err: any) {
     return { success: false, error: { message: 'LLM structured output failed', code: err.code, status: err.status, details: err } };

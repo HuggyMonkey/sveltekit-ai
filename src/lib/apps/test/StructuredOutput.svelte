@@ -23,6 +23,7 @@
             } else {
                 relatedItems = data.data.relatedItems;
                 console.log(relatedItems);
+                console.log(data.data);
             }
         } catch (e) {
             error = 'Network or server error';
@@ -70,7 +71,7 @@
             <h3 class="font-semibold mb-2">Related Words:</h3>
             <ul class="list-disc list-inside space-y-1">
                 {#each relatedItems as item}
-                    <li>{item.name}</li>
+                    <li>{item}</li>
                 {/each}
             </ul>
         </div>
